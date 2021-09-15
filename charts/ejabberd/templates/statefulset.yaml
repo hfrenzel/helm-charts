@@ -1,0 +1,349 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "ejabberd.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.statefulsetLabels }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.statefulsetLabels "context" $) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ template "ejabberd.fullname" . }}-headless
+  podManagementPolicy: {{ .Values.podManagementPolicy }}
+  replicas: {{ .Values.replicaCount }}
+  updateStrategy:
+    type: {{ .Values.updateStrategyType }}
+    {{- if (eq "OnDelete" .Values.updateStrategyType) }}
+    rollingUpdate: null
+    {{- end }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if .Values.commonAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+        checksum/config: {{ include (print $.Template.BasePath "/configuration.yaml") . | sha256sum }}
+        {{- if or (not .Values.auth.existingErlangSecret) (not .Values.auth.existingiAdminPasswordSecret) .Values.extraSecrets }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- include "ejabberd.podAnnotations" . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "ejabberd.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ template "ejabberd.serviceAccountName" . }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" .) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "context" $) | nindent 10 }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- omit .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if or (.Values.initContainers) (and .Values.volumePermissions.enabled .Values.podSecurityContext (or .Values.persistence.database.enabled .Values.persistence.upload.enabled)) }}
+      initContainers:
+        {{- if and .Values.volumePermissions.enabled .Values.podSecurityContext (or .Values.persistence.database.enabled .Values.persistence.upload.enabled) }}
+        - name: volume-permissions
+          image: {{ include "ejabberd.volumePermissions.image" . }}
+          imagePullPolicy: {{ .Values.volumePermissions.image.pullPolicy | quote }}
+          command:
+            - /bin/sh
+          args:
+            - -ec
+            - |
+              {{- if .Values.persistence.database.enabled }}
+              mkdir -p "/home/ejabberd/database"
+              chown -R "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" /home/ejabberd/database
+              {{- end }}
+              {{- if .Values.persistence.upload.enabled }}
+              mkdir -p "/home/ejabberd/upload"
+              chown -R "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" /home/ejabberd/upload
+              {{- end }}
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+          {{- if .Values.volumePermissions.resources }}
+          resources: {{- toYaml .Values.volumePermissions.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.persistence.database.enabled }}
+            - name: database
+              mountPath: "/home/ejabberd/database"
+            {{- end }}
+            {{- if .Values.persistence.upload.enabled }}
+            - name: upload
+              mountPath: "/home/ejabberd/upload"
+            {{- end }}
+        {{- end }}
+        {{- if .Values.initContainers }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: ejabberd
+          image: {{ template "ejabberd.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext }}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else if .Values.args }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+            - name: K8S_SERVICE_NAME
+              value: "{{ template "ejabberd.fullname" . }}-headless"
+            - name: K8S_ADDRESS_TYPE
+              value: {{ .Values.clustering.addressType }}
+
+            {{- if (eq "hostname" .Values.clustering.addressType) }}
+            - name: EJABBERD_NODE_NAME
+              value: "ejabberd@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+            - name: K8S_HOSTNAME_SUFFIX
+              value: ".$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+            {{- else }}
+            - name: EJABBERD_NODE_NAME
+              value: "ejabberd@$(MY_POD_NAME)"
+            {{- end }}
+
+            - name: ERLANG_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "ejabberd.fullname" . }}
+                  key: ejabberd-erlang-cookie
+
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ tpl .Values.extraEnvVarsCM . | quote }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ tpl .Values.extraEnvVarsSecret . | quote }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: {{ .Values.service.c2s.portName }}
+              containerPort: {{ .Values.service.c2s.port }}
+            - name: {{ .Values.service.s2s.portName }}
+              containerPort: {{ .Values.service.s2s.port }}
+            - name: {{ .Values.service.http.portName }}
+              containerPort: {{ .Values.service.http.port }}
+            - name: {{ .Values.service.https.portName }}
+              containerPort: {{ .Values.service.https.port }}
+            - name: {{ .Values.service.mqtt.portName }}
+              containerPort: {{ .Values.service.mqtt.port }}
+            {{- if .Values.extraContainerPorts }}
+            {{- toYaml .Values.extraContainerPorts | nindent 12 }}
+            {{- end }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - bin/ejabberdctl status
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- else if .Values.customLivenessProbe }}
+          livenessProbe:
+            {{- toYaml .values.customLivenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - bin/ejabberdctl ping
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- else if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- end }}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    echo "$ERLANG_COOKIE" > /home/ejabberd/.erlang.cookie;
+                    chown "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" /home/ejabberd/.erlang.cookie;
+                    chmod 0400 /home/ejabberd/.erlang.cookie
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: conf
+              mountPath: "/home/ejabberd/conf"
+            {{- if .Values.auth.tls.enabled }}
+            - name: certs
+              mountPath: "/home/ejabberd/certs"
+            {{- end }}
+            - name: database
+              mountPath: "/home/ejabberd/database"
+            - name: upload
+              mountPath: "/home/ejabberd/upload"
+            {{- if .Values.extraVolumeMounts }}
+            {{ toYaml .Values.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if .Values.persistence.volumes }}
+        {{- toYaml .Values.persistence.volumes | nindent 8 }}
+        {{- end }}
+        - name: conf
+          configMap:
+            name: {{ template "ejabberd.fullname" . }}-config
+            items:
+              - key: ejabberd.yml
+                path: ejabberd.yml
+              - key: ejabberdctl.cfg
+                path: ejabberdctl.cfg
+              - key: inetrc
+                path: inetrc
+        {{- if .Values.auth.tls.enabled }}
+        - name: certs
+          secret:
+            secretName: {{ template "ejabberd.tlsSecretName" . }}
+            items:
+              - key: {{ ternary "tls.crt" "ca.crt" .Values.auth.tls.existingSecretFullChain }}
+                path: ca_certificate.pem
+              - key: tls.crt
+                path: server_certificate.pem
+              - key: tls.key
+                path: server_key.pem
+        {{- end }}
+        {{- if not (contains "database" (quote .Values.persistence.volumes)) }}
+        {{- if not .Values.persistence.database.enabled }}
+        - name: database
+          emptyDir: {}
+        {{- else if .Values.persistence.database.existingClaim }}
+        - name: database
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.database.existingClaim }}
+        {{- end }}
+        {{- end }}
+        {{- if not (contains "upload" (quote .Values.persistence.volumes)) }}
+        {{- if not .Values.persistence.upload.enabled }}
+        - name: upload
+          emptyDir: {}
+        {{- else if .Values.persistence.upload.existingClaim }}
+        - name: upload
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.upload.existingClaim }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{ toYaml .Values.extraVolumes | nindent 8 }}
+        {{- end }}
+  {{- if or (and .Values.persistence.database.enabled (not .Values.persistence.database.existingClaim)) (and .Values.persistence.upload.enabled (not .Values.persistence.upload.existingClaim)) }}
+  volumeClaimTemplates:
+    {{- if and .Values.persistence.database.enabled (not .Values.persistence.database.existingClaim) }}
+    - metadata:
+        name: database
+        labels: {{- include "common.labels.matchLabels" . | nindent 10 }}
+        {{- if .Values.persistence.database.annotations }}
+        annotations:
+          {{- include "common.tplvalues.render" ( dict "value" .Values.persistence.database.annotations "context" $) | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.persistence.database.accessMode | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.database.size | quote }}
+        {{ include "common.storage.class" (dict "persistence" .Values.persistence.database "global" .Values.global) }}
+        {{- if .Values.persistence.database.selector }}
+        selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.database.selector "context" $) | nindent 10 }}
+        {{- end -}}
+    {{- end }}
+    {{- if and .Values.persistence.upload.enabled (not .Values.persistence.upload.existingClaim) }}
+    - metadata:
+        name: upload
+        labels: {{- include "common.labels.matchLabels" . | nindent 10 }}
+        {{- if .Values.persistence.upload.annotations }}
+        annotations:
+          {{- include "common.tplvalues.render" ( dict "value" .Values.persistence.database.annotations "context" $) | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.persistence.upload.accessMode | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.upload.size | quote }}
+        {{ include "common.storage.class" (dict "persistence" .Values.persistence.upload "global" .Values.global) }}
+        {{- if .Values.persistence.upload.selector }}
+        selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.database.selector "context" $) | nindent 10 }}
+        {{- end }}
+    {{- end }}
+  {{- end }}

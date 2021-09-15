@@ -1,0 +1,35 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "ejabberd.fullname" . }}-headless
+  namespace: {{ .Release.namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+  {{- if or (.Values.service.annotationsHeadless) (.Values.commonAnnotations) }}
+  annotations:
+    {{- if .Values.commonAnnotations}}
+    {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" $) | nindent 4 }}
+    {{- end -}}
+    {{- if .Values.service.annotationsHeadless}}
+    {{- include "common.tplvalues.render" (dict "value" .Values.service.annotationsHeadless "context" $) | nindent 4 }}
+    {{- end -}}
+  {{- end }}
+spec:
+  clusterIP: None
+  ports:
+    - name: {{ .Values.service.c2s.portName }}
+      port: {{ .Values.service.c2s.port }}
+      targetPort: {{ .Values.service.c2s.portName }}
+    - name: {{ .Values.service.s2s.portName }}
+      port: {{ .Values.service.s2s.port }}
+      targetPort: {{ .Values.service.s2s.portName }}
+    - name: {{ .Values.service.http.portName }}
+      port: {{ .Values.service.http.port }}
+      targetPort: {{ .Values.service.http.portName }}
+    - name: {{ .Values.service.https.portName }}
+      port: {{ .Values.service.https.port }}
+      targetPort: {{ .Values.service.https.portName }}
+    - name: {{ .Values.service.mqtt.portName }}
+      port: {{ .Values.service.mqtt.port }}
+      targetPort: {{ .Values.service.mqtt.portName }}
+  selector: {{ include "common.labels.matchLabels" . | nindent 4 }}

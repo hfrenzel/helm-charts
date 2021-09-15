@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "ejabberd.fullname" . }}-config
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  ejabberd.yml: |-
+    {{- include "common.tplvalues.render" (dict "value" .Values.configuration.ejabberd "context" $) | nindent 4 }}
+  ejabberdctl.cfg: |-
+    {{- include "common.tplvalues.render" (dict "value" .Values.configuration.ejabberdctl "context" $) | nindent 4 }}
+  inetrc: |-
+    {{- include "common.tplvalues.render" (dict "value" .Values.configuration.inetrc "context" $) | nindent 4 }}

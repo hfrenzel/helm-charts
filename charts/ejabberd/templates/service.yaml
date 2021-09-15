@@ -1,0 +1,81 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "ejabberd.fullname" . }}
+  namespace: {{ .Release.namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.service.labels }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.service.labels "context" $) | nindent 4 }}
+    {{- end }}
+  {{- if or (.Values.service.annotations) (.Values.commonAnnotations) }}
+  annotations:
+    {{- if .Values.commonAnnotations}}
+    {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" $) | nindent 4 }}
+    {{- end -}}
+    {{- if .Values.service.annotations}}
+    {{- include "common.tplvalues.render" (dict "value" .Values.service.annotations "context" $) | nindent 4 }}
+    {{- end -}}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if eq .Values.service.type "LoadBalancer" }}
+  {{- if not (empty .Values.service.loadBalancerIP) }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  {{- if .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- if (or (eq .Values.service.type "LoadBalancer") (eq .Values.service.type "NodePort")) }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if .Values.service.externalIPs }}
+  externalIPs: {{- toYaml .values.service.externalIPs | nindent 4 }}
+  {{- end }}
+
+  ports:
+    - name: {{ .Values.service.c2s.portName }}
+      port: {{ .Values.service.c2s.port }}
+      targetPort: {{ .Values.service.c2s.portName }}
+      {{- if (eq .Values.service.type "ClusterIP") }}
+      nodePort: null
+      {{- else if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.c2s.nodePort)) }}
+      nodePort: {{ .Values.service.c2s.nodePort }}
+      {{- end }}
+    - name: {{ .Values.service.s2s.portName }}
+      port: {{ .Values.service.s2s.port }}
+      targetPort: {{ .Values.service.s2s.portName }}
+      {{- if (eq .Values.service.type "ClusterIP") }}
+      nodePort: null
+      {{- else if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.s2s.nodePort)) }}
+      nodePort: {{ .Values.service.s2s.nodePort }}
+      {{- end }}
+    - name: {{ .Values.service.http.portName }}
+      port: {{ .Values.service.http.port }}
+      targetPort: {{ .Values.service.http.portName }}
+      {{- if (eq .Values.service.type "ClusterIP") }}
+      nodePort: null
+      {{- else if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.http.nodePort)) }}
+      nodePort: {{ .Values.service.http.nodePort }}
+      {{- end }}
+    - name: {{ .Values.service.https.portName }}
+      port: {{ .Values.service.https.port }}
+      targetPort: {{ .Values.service.https.portName }}
+      {{- if (eq .Values.service.type "ClusterIP") }}
+      nodePort: null
+      {{- else if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.https.nodePort)) }}
+      nodePort: {{ .Values.service.https.nodePort }}
+      {{- end }}
+    - name: {{ .Values.service.mqtt.portName }}
+      port: {{ .Values.service.mqtt.port }}
+      targetPort: {{ .Values.service.mqtt.portName }}
+      {{- if (eq .Values.service.type "ClusterIP") }}
+      nodePort: null
+      {{- else if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.mqtt.nodePort)) }}
+      nodePort: {{ .Values.service.mqtt.nodePort }}
+      {{- end }}
+    {{- if .Values.service.extraPorts }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.service.extraPorts "context" $) | nindent 4 }}
+    {{- end }}
+  selector: {{ include "common.labels.matchLabels" . | nindent 4 }}

@@ -1,0 +1,125 @@
+{{- $servicePort := .Values.service.c2s.port -}}
+{{- $serviceNodePort := .Values.service.c2s.nodePort -}}
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+The chart has been deployed in diagnostic mode. All probes have been disabled and the command has been overwritten with:
+
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+Get the list of pods by executing:
+
+  kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pod you want to debug by executing
+
+  kubectl exec --namespace {{ .Release.Namespace }} -ti <NAME OF THE POD> -- bash
+
+{{- else }}
+
+Credentials:
+
+    echo "ErLang Cookie : $(kubectl get secret --namespace {{ .Release.Namespace }} {{ include "ejabberd.secretErlangName" . }} -o jsonpath="{.data.ejabberd-erlang-cookie}" | base64 --decode)"
+
+eJabberd can be accessed within the cluster on port {{ $serviceNodePort }} at {{ include "ejabberd.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clustering.k8s_domain }}
+
+To access for outside the cluster, perform the following steps:
+
+{{- if .Values.ingress.enabled }}
+{{- if contains "NodePort" .Values.service.type }}
+
+To Access the eJabberd c2s port:
+
+1. Obtain the NodePort IP and ports:
+
+    export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+    export NODE_PORT_C2S=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[1].nodePort}" services {{ include "ejabberd.fullname" . }})
+    echo "URL : jabber://$NODE_IP:$NODE_PORT_C2S/"
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+To Access the eJabberd c2s port:
+
+1. Obtain the LoadBalancer IP:
+
+NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+      Watch the status with: 'kubectl get svc --namespace {{ .Release.Namespace }} -w {{ include "ejabberd.fullname" . }}'
+
+    export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "ejabberd.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+    echo "URL : jabber://$SERVICE_IP:{{ $servicePort }}/"
+
+{{- else if contains "ClusterIP"  .Values.service.type }}
+
+To Access the eJabberd C2S port:
+
+1. Create a port-forward to the C2S port:
+
+    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "ejabberd.fullname" . }} {{ $servicePort }}:{{ $servicePort }} &
+    echo "URL : jabber://127.0.0.1:{{ $servicePort }}/"
+
+{{- end }}
+
+2. Access eJabberd using the obtained URL.
+
+To Access the eJabberd Web UI interface:
+
+1. Get the eJabberd Web UI URL and associate its hostname to your cluster external IP:
+
+   export CLUSTER_IP=$(minikube ip) # On Minikube. Use: `kubectl cluster-info` on others K8s clusters
+   echo "eJabberd Web UI: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.hostname }}/"
+   echo "$CLUSTER_IP  {{ .Values.ingress.hostname }}" | sudo tee -a /etc/hosts
+
+2. Open a browser and access eJabberd Web UI using the obtained URL.
+
+{{- else }}
+
+{{- if contains "NodePort" .Values.service.type }}
+
+Obtain the NodePort IP and ports:
+
+    export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+    export NODE_PORT_C2S=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[1].nodePort}" services {{ include "ejabberd.fullname" . }})
+    export NODE_PORT_WEB=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[3].nodePort}" services {{ include "ejabberd.fullname" . }})
+
+To Access the eJabberd C2S port:
+
+    echo "URL : jabber://$NODE_IP:$NODE_PORT_AMQP/"
+
+To Access the eJabberd Web UI interface:
+
+    echo "URL : http://$NODE_IP:$NODE_PORT_WEB/"
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+Obtain the LoadBalancer IP:
+
+NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+      Watch the status with: 'kubectl get svc --namespace {{ .Release.Namespace }} -w {{ include "ejabberd.fullname" . }}'
+
+    export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "ejabberd.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+
+To Access the eJabberd C2S port:
+
+    echo "URL : jabber://$SERVICE_IP:{{ $servicePort }}/"
+
+To Access the eJabberd Web UI interface:
+
+    echo "URL : http://$SERVICE_IP:{{ .Values.service.http.port }}/"
+
+{{- else if contains "ClusterIP"  .Values.service.type }}
+
+To Access the eJabberd C2S port:
+
+    echo "URL : jabber://127.0.0.1:{{ $servicePort }}/"
+    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "ejabberd.fullname" . }} {{ $servicePort }}:{{ $servicePort }}
+
+To Access the eJabberd Web UI interface:
+
+    echo "URL : http://127.0.0.1:{{ .Values.service.http.port }}/"
+    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "ejabberd.fullname" . }} {{ .Values.service.http.port }}:{{ .Values.service.http.port }}
+
+{{- end }}
+{{- end }}
+
+{{- end }}
