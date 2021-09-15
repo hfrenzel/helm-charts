@@ -1,0 +1,32 @@
+apiVersion: v1
+entries:
+  ejabberd:
+  - apiVersion: v2
+    appVersion: "21.07"
+    created: "2021-09-15T21:36:21.116767355Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 1.x.x
+    description: ejabberd Community Server - Helm Chart
+    digest: 077af7ffb760ab06774b3eee3a211bc08b92ba97f63e45467189e4f621f3cb0a
+    home: https://github.com/hfrenzel/helm-charts/charts/ejabberd
+    icon: https://docs.ejabberd.im/static/shared/images/header_logo_full_name@2x.png
+    keywords:
+    - xmpp
+    - jabber
+    maintainers:
+    - email: hfrenzel@scunc.net
+      name: Hendrik Frenzel
+    name: ejabberd
+    sources:
+    - https://ejabberd.im
+    - https://github.com/processone/ejabberd
+    - https://github.com/processone/docker-ejabberd
+    type: application
+    urls:
+    - https://github.com/hfrenzel/helm-charts/releases/download/ejabberd-0.1.0/ejabberd-0.1.0.tgz
+    version: 0.1.0
+generated: "2021-09-15T21:36:21.116774056Z"
