@@ -209,7 +209,7 @@ configuration:
     log_rotate_count: 1
     log_rate_limit: 100
 
-    {{- if (include "ejabberd.createTlsSecret" . ) }}
+    {{- if or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled }}
     certfiles:
       - "/home/ejabberd/certs/server_certificate.pem"
       - "/home/ejabberd/certs/server_key.pem"
@@ -223,7 +223,7 @@ configuration:
         max_stanza_size: 262144
         shaper: c2s_shaper
         access: c2s
-        {{- if (include "ejabberd.createTlsSecret" . ) }}
+        {{- if or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled }}
         starttls_required: true
         {{ else }}
         starttls_required: false
@@ -237,12 +237,12 @@ configuration:
       - port: {{ .Values.service.https.port }}
         ip: "::"
         module: ejabberd_http
-        {{- if (include "ejabberd.createTlsSecret" . ) }}
+        {{- if or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled }}
         tls: true
         {{- end }}
         request_handlers:
           "/admin": ejabberd_web_admin
-          {{- if (include "ejabberd.createTlsSecret" . ) }}
+          {{- if or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled }}
           "/api": mod_http_api
           "/bosh": mod_bosh
           "/captcha": ejabberd_captcha
@@ -256,7 +256,7 @@ configuration:
         module: ejabberd_http
         request_handlers:
           "/admin": ejabberd_web_admin
-          {{- if not (include "ejabberd.createTlsSecret" . ) }}
+          {{- if not (or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled ) }}
           "/api": mod_http_api
           "/bosh": mod_bosh
           "/captcha": ejabberd_captcha
@@ -270,7 +270,7 @@ configuration:
         module: mod_mqtt
         backlog: 1000
 
-    {{- if (include "ejabberd.createTlsSecret" . ) }}
+    {{- if or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled }}
     s2s_use_starttls: optional
     {{ else }}
     s2s_use_starttls: false
@@ -366,7 +366,7 @@ configuration:
       mod_fail2ban: {}
       mod_http_api: {}
       mod_http_upload:
-        {{- if (include "ejabberd.createTlsSecret" . ) }}
+        {{- if or (include "ejabberd.createTlsSecret" . ) .Values.auth.tls.enabled }}
         put_url: https://@HOST@:5443/upload
         {{- else }}
         put_url: http://@HOST@:5280/upload
