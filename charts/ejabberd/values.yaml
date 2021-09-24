@@ -38,10 +38,10 @@ image:
   repository: ejabberd/ecs
   tag: 21.07
 
-  ## set to true if you would like to see extra information on logs
-  ## It turns BASH and/or NAMI debugging in the image
-  ##
-  debug: false
+  ### set to true if you would like to see extra information on logs
+  ### It turns BASH and/or NAMI debugging in the image
+  ###
+  #debug: false
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -60,25 +60,25 @@ image:
 
 ## @section Common parameters
 
-## @param nameOverride String to partially override ejabberd.fullname template (will maintain the release name)
-##
-nameOverride: ""
+### @param nameOverride String to partially override ejabberd.fullname template (will maintain the release name)
+###
+#nameOverride: ""
 
-## @param fullnameOverride String to fully override ejabberd.fullname template
-##
-fullnameOverride: ""
+### @param fullnameOverride String to fully override ejabberd.fullname template
+###
+#fullnameOverride: ""
 
-## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
-##
-kubeVersion: ""
+### @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+###
+#kubeVersion: ""
 
 ## @param clusterDomain Kubernetes Cluster Domain
 ##
 clusterDomain: cluster.local
 
-## @param extraDeploy Array of extra objects to deploy with the release
-##
-extraDeploy: []
+### @param extraDeploy Array of extra objects to deploy with the release
+###
+#extraDeploy: []
 
 ## Enable diagnostic mode in the deployment
 ##
@@ -142,18 +142,18 @@ auth:
 clustering:
   ## @param clustering.enabled Enable eJabberd clustering
   ##
-  enabled: true
+  enabled: false
 
   ## @param clustering.addressType Switch clustering mode. Either `ip` or `hostname`
   ##
-  addressType: hostname
+  addressType: ip
 
 ## @param command Override default container command (useful when using custom images)
 ##
 command: []
 
-## @param args Override default container args (useful when using custom images)
-args: []
+### @param args Override default container args (useful when using custom images)
+#args: []
 
 ## @param terminationGracePeriodSeconds Default duration in seconds k8s waits for container to exit before sending kill signal.
 ## Any time in excess of 10 seconds will be spent waiting for any synchronization necessary for cluster not to lose data.
@@ -431,14 +431,16 @@ configuration:
       mod_version:
         show_os: false
 
-## @param extraConfiguration [string] Configuration file content: extra configuration to be appended to eJabberd configuration
-## Use this instead of `configuration` to add more configuration
-##
-extraConfiguration: |-
 
-## @param advancedConfiguration Configuration file content: advanced configuration
-##
-advancedConfiguration: |-
+
+### @param extraConfiguration [string] Configuration file content: extra configuration to be appended to eJabberd configuration
+### Use this instead of `configuration` to add more configuration
+###
+#extraConfiguration: |-
+
+### @param advancedConfiguration Configuration file content: advanced configuration
+###
+#advancedConfiguration: |-
 
 ## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts
 ## Examples:
@@ -677,20 +679,20 @@ initContainers: []
 ##
 sidecars: []
 
-## Pod Disruption Budget configuration
-## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-##
-pdb:
-  ## @param pdb.create Enable/disable a Pod Disruption Budget creation
-  ##
-  create: false
-
-  ## @param pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
-  ##
-  minAvailable: 1
-  ## @param pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable
-  ##
-  maxUnavailable: ""
+### Pod Disruption Budget configuration
+### ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+###
+#pdb:
+#  ## @param pdb.create Enable/disable a Pod Disruption Budget creation
+#  ##
+#  create: false
+#
+#  ## @param pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+#  ##
+#  minAvailable: 1
+#  ## @param pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable
+#  ##
+#  maxUnavailable: ""
 
 ## @section RBAC parameters
 
@@ -700,22 +702,22 @@ pdb:
 serviceAccount:
   ## @param serviceAccount.create Enable creation of ServiceAccount for eJabberd pods
   ##
-  create: true
+  create: false
 
   ## @param serviceAccount.name Name of the created serviceAccount
   ## If not set and create is true, a name is generated using the ejabberd.fullname template
   ##
   name: ""
 
-## Role Based Access
-## ref: https://kubernetes.io/docs/admin/authorization/rbac/
-##
-rbac:
-  ## @param rbac.create Whether RBAC rules should be created
-  ## binding eJabberd ServiceAccount to a role
-  ## that allows eJabberd pods querying the K8s API
-  ##
-  create: true
+### Role Based Access
+### ref: https://kubernetes.io/docs/admin/authorization/rbac/
+###
+#rbac:
+#  ## @param rbac.create Whether RBAC rules should be created
+#  ## binding eJabberd ServiceAccount to a role
+#  ## that allows eJabberd pods querying the K8s API
+#  ##
+#  create: false
 
 ## @section Persistence parameters
 
@@ -980,7 +982,7 @@ ingress:
   ##
   selfSigned: false
 
-   ## @param ingress.extraHosts The list of additional hostnames to be covered with this ingress record.
+  ## @param ingress.extraHosts The list of additional hostnames to be covered with this ingress record.
   ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
   ## e.g:
   ## extraHosts:
@@ -1026,34 +1028,34 @@ ingress:
   ##
   ingressClassName: ""
 
-## Network Policy configuration
-## ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
-##
-networkPolicy:
-  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources
-  ##
-  enabled: false
-
-  ## @param networkPolicy.allowExternal Don't require client label for connections
-  ## The Policy model to apply. When set to false, only pods with the correct
-  ## client label will have network access to the ports eJabberd is listening
-  ## on. When true, eJabberd will accept connections from any source
-  ## (with the correct destination port).
-  ##
-  allowExternal: true
-
-  ## @param networkPolicy.additionalRules Additional NetworkPolicy Ingress "from" rules to set. Note that all rules are OR-ed.
-  ## e.g:
-  ## additionalRules:
-  ##  - matchLabels:
-  ##    - role: frontend
-  ##  - matchExpressions:
-  ##    - key: role
-  ##      operator: In
-  ##      values:
-  ##        - frontend
-  ##
-  additionalRules: []
+### Network Policy configuration
+### ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+###
+#networkPolicy:
+#  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources
+#  ##
+#  enabled: false
+#
+#  ## @param networkPolicy.allowExternal Don't require client label for connections
+#  ## The Policy model to apply. When set to false, only pods with the correct
+#  ## client label will have network access to the ports eJabberd is listening
+#  ## on. When true, eJabberd will accept connections from any source
+#  ## (with the correct destination port).
+#  ##
+#  allowExternal: true
+#
+#  ## @param networkPolicy.additionalRules Additional NetworkPolicy Ingress "from" rules to set. Note that all rules are OR-ed.
+#  ## e.g:
+#  ## additionalRules:
+#  ##  - matchLabels:
+#  ##    - role: frontend
+#  ##  - matchExpressions:
+#  ##    - key: role
+#  ##      operator: In
+#  ##      values:
+#  ##        - frontend
+#  ##
+#  additionalRules: []
 
 ## TODO: @section Metrics Parameters
 
