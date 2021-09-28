@@ -9,9 +9,23 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 data:
+{{- if (.Files.Glob "files/ejabberd.yml") }}
+{{ (.Files.Glob "files/ejabberd.yml").AsConfig | indent 2 }}
+{{- else if .Values.configuration.ejabberd }}
   ejabberd.yml: |-
     {{- include "common.tplvalues.render" (dict "value" .Values.configuration.ejabberd "context" $) | nindent 4 }}
+{{- end }}
+{{- if (.Files.Glob "files/ejabberdctl.cfg") }}
+{{ (.Files.Glob "files/ejabberdctl.cfg").AsConfig | indent 2 }}
+{{- else if .Values.configuration.ejabberdctl }}
   ejabberdctl.cfg: |-
     {{- include "common.tplvalues.render" (dict "value" .Values.configuration.ejabberdctl "context" $) | nindent 4 }}
+{{- else }}
+  ejabberdctl.cfg: ""
+{{- end }}
+{{- if (.Files.Glob "files/inetrc") }}
+{{ (.Files.Glob "files/inetrc").AsConfig | indent 2 }}
+{{- else if .Values.configuration.inetrc }}
   inetrc: |-
     {{- include "common.tplvalues.render" (dict "value" .Values.configuration.inetrc "context" $) | nindent 4 }}
+{{- end }}
