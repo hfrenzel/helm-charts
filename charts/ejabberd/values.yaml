@@ -431,16 +431,26 @@ configuration:
       mod_version:
         show_os: false
 
+    {{- if .Values.extraConfiguration }}
+    include_config_file:
+      {{- range $k, $v := .Values.extraConfiguration }}
+      "/home/ejabberd/extra-config/{{ $k }}": {}
+      {{- end }}
+    {{- end }}
 
-
-### @param extraConfiguration [string] Configuration file content: extra configuration to be appended to eJabberd configuration
+### @param extraConfiguration [map] Configuration files content: extra configuration files to be íncluded to eJabberd configuration
 ### Use this instead of `configuration` to add more configuration
 ###
-#extraConfiguration: |-
-
-### @param advancedConfiguration Configuration file content: advanced configuration
-###
-#advancedConfiguration: |-
+extraConfiguration: {}
+  ## Examples
+  ## database.yml: |-
+  ##   sql_type:       pgsql
+  ##   sql_server:     localhost
+  ##   sql_database:   database-jabber-example-local
+  ##   sql_username:   ejabberd
+  ##   sql_password:   password
+  ##   auth_method:    [sql]
+  ##   new_sql_schema: true
 
 ## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts
 ## Examples:
@@ -460,14 +470,6 @@ extraVolumeMounts: []
 extraVolumes: []
 
 ## @param extraSecrets Optionally specify extra secrets to be created by the chart.
-## This can be useful when combined with load_definitions to automatically create the secret containing the definitions to be loaded.
-## Example:
-## extraSecrets:
-##   load-definition:
-##     load_definition.json: |
-##       {
-##         ...
-##       }
 ##
 extraSecrets: {}
 

@@ -251,6 +251,10 @@ spec:
               mountPath: "/home/ejabberd/database"
             - name: upload
               mountPath: "/home/ejabberd/upload"
+            {{- if .Values.extraConfiguration }}
+            - name: extra-config
+              mountPath: "/home/ejabberd/extra-config"
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{ toYaml .Values.extraVolumeMounts | nindent 12 }}
             {{- end }}
@@ -302,6 +306,11 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.upload.existingClaim }}
         {{- end }}
+        {{- end }}
+        {{- if .Values.extraConfiguration }}
+        - name: extra-config
+          secret:
+            secretName: {{ template "ejabberd.fullname" . }}-extra-config
         {{- end }}
         {{- if .Values.extraVolumes }}
         {{ toYaml .Values.extraVolumes | nindent 8 }}
