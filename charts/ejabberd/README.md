@@ -28,9 +28,7 @@ ejabberd Community Server - Helm Chart
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| advancedConfiguration | string | `""` |  |
 | affinity | object | `{}` |  |
-| args | list | `[]` |  |
 | auth.adminPassword | string | `""` |  |
 | auth.erlangCookie | string | `""` |  |
 | auth.existingAdminPasswordSecret | string | `""` |  |
@@ -43,11 +41,11 @@ ejabberd Community Server - Helm Chart
 | auth.tls.serverCertificate | string | `""` |  |
 | auth.tls.serverKey | string | `""` |  |
 | clusterDomain | string | `"cluster.local"` |  |
-| clustering.addressType | string | `"hostname"` |  |
-| clustering.enabled | bool | `true` |  |
+| clustering.addressType | string | `"ip"` |  |
+| clustering.enabled | bool | `false` |  |
 | command | list | `[]` |  |
 | commonAnnotations | object | `{}` |  |
-| configuration.ejabberd | string | `"hosts:\n  - {{ .Values.ejabberd.virtualHost }}\n\nloglevel: 4\nlog_rotate_size: 10485760\nlog_rotate_date: \"\"\nlog_rotate_count: 1\nlog_rate_limit: 100\n\n{{- if (include \"ejabberd.createTlsSecret\" . ) }}\ncertfiles:\n  - \"/home/ejabberd/certs/server_certificate.pem\"\n  - \"/home/ejabberd/certs/server_key.pem\"\nca_file: \"/home/ejabberd/certs/ca_certificate.pem\"\n{{- end }}\n\nlisten:\n  - port: {{ .Values.service.c2s.port }}\n    ip: \"::\"\n    module: ejabberd_c2s\n    max_stanza_size: 262144\n    shaper: c2s_shaper\n    access: c2s\n    {{- if (include \"ejabberd.createTlsSecret\" . ) }}\n    starttls_required: true\n    {{ else }}\n    starttls_required: false\n    {{ end }}\n\n  - port: {{ .Values.service.s2s.port }}\n    ip: \"::\"\n    module: ejabberd_s2s_in\n    max_stanza_size: 524288\n\n  - port: {{ .Values.service.https.port }}\n    ip: \"::\"\n    module: ejabberd_http\n    {{- if (include \"ejabberd.createTlsSecret\" . ) }}\n    tls: true\n    {{- end }}\n    request_handlers:\n      \"/admin\": ejabberd_web_admin\n      {{- if (include \"ejabberd.createTlsSecret\" . ) }}\n      \"/api\": mod_http_api\n      \"/bosh\": mod_bosh\n      \"/captcha\": ejabberd_captcha\n      \"/upload\": mod_http_upload\n      \"/ws\": ejabberd_http_ws\n      \"/oauth\": ejabberd_oauth\n      {{- end }}\n\n  - port: {{ .Values.service.http.port }}\n    ip: \"::\"\n    module: ejabberd_http\n    request_handlers:\n      \"/admin\": ejabberd_web_admin\n      {{- if not (include \"ejabberd.createTlsSecret\" . ) }}\n      \"/api\": mod_http_api\n      \"/bosh\": mod_bosh\n      \"/captcha\": ejabberd_captcha\n      \"/upload\": mod_http_upload\n      \"/ws\": ejabberd_http_ws\n      \"/oauth\": ejabberd_oauth\n      {{- end }}\n\n  - port: {{ .Values.service.mqtt.port }}\n    ip: \"::\"\n    module: mod_mqtt\n    backlog: 1000\n\n{{- if (include \"ejabberd.createTlsSecret\" . ) }}\ns2s_use_starttls: optional\n{{ else }}\ns2s_use_starttls: false\n{{ end }}\n\nacl:\n  local:\n    user_regexp: \"\"\n  loopback:\n    ip:\n      - 127.0.0.0/8\n      - ::1/128\n      - ::FFFF:127.0.0.1/128\n  admin:\n    user:\n      - \"admin@{{ .Values.ejabberd.virtualHost }}\"\n\naccess_rules:\n  local:\n    allow: local\n  c2s:\n    deny: blocked\n    allow: all\n  announce:\n    allow: admin\n  configure:\n    allow: admin\n  muc_create:\n    allow: local\n  pubsub_createnode:\n    allow: local\n  trusted_network:\n    allow: loopback\n\napi_permissions:\n  \"console commands\":\n    from:\n      - ejabberd_ctl\n    who: all\n    what: \"*\"\n  \"admin access\":\n    who:\n      access:\n        allow:\n          acl: loopback\n          acl: admin\n      oauth:\n        scope: \"ejabberd:admin\"\n        access:\n          allow:\n            acl: loopback\n            acl: admin\n    what:\n      - \"*\"\n      - \"!stop\"\n      - \"!start\"\n  \"public commands\":\n    who:\n      ip: 127.0.0.1/8\n    what:\n      - status\n      - connected_users_number\n\nshaper:\n  normal: 1000\n  fast: 50000\n\nshaper_rules:\n  max_user_sessions: 10\n  max_user_offline_messages:\n    5000: admin\n    100: all\n  c2s_shaper:\n    none: admin\n    normal: all\n  s2s_shaper: fast\n\nmax_fsm_queue: 10000\n\nmodules:\n  mod_adhoc: {}\n  mod_admin_extra: {}\n  mod_announce:\n    access: announce\n  mod_avatar: {}\n  mod_blocking: {}\n  mod_bosh: {}\n  mod_caps: {}\n  mod_carboncopy: {}\n  mod_client_state: {}\n  mod_configure: {}\n  mod_disco: {}\n  mod_fail2ban: {}\n  mod_http_api: {}\n  mod_http_upload:\n    {{- if (include \"ejabberd.createTlsSecret\" . ) }}\n    put_url: https://@HOST@:5443/upload\n    {{- else }}\n    put_url: http://@HOST@:5280/upload\n    {{- end }}\n  mod_last: {}\n  mod_mam:\n    ## Mnesia is limited to 2GB, better to use an SQL backend\n    ## For small servers SQLite is a good fit and is very easy\n    ## to configure. Uncomment this when you have SQL configured:\n    ## db_type: sql\n    assume_mam_usage: true\n    default: never\n  mod_mqtt: {}\n  mod_muc:\n    access:\n      - allow\n    access_admin:\n      - allow: admin\n    access_create: muc_create\n    access_persistent: muc_create\n    access_mam:\n      - allow\n    default_room_options:\n      allow_subscription: true  # enable MucSub\n      mam: false\n  mod_muc_admin: {}\n  mod_offline:\n    access_max_user_messages: max_user_offline_messages\n  mod_ping: {}\n  mod_privacy: {}\n  mod_private: {}\n  mod_proxy65:\n    access: local\n    max_connections: 5\n  mod_pubsub:\n    access_createnode: pubsub_createnode\n    plugins:\n      - flat\n      - pep\n    force_node_config:\n      ## Avoid buggy clients to make their bookmarks public\n      storage:bookmarks:\n        access_model: whitelist\n  mod_push: {}\n  mod_push_keepalive: {}\n  mod_register:\n    ## Only accept registration requests from the \"trusted\"\n    ## network (see access_rules section above).\n    ## Think twice before enabling registration from any\n    ## address. See the Jabber SPAM Manifesto for details:\n    ## https://github.com/ge0rg/jabber-spam-fighting-manifesto\n    ip_access: trusted_network\n  mod_roster:\n    versioning: true\n  mod_sip: {}\n  mod_s2s_dialback: {}\n  mod_shared_roster: {}\n  mod_stream_mgmt:\n    resend_on_timeout: if_offline\n  mod_vcard: {}\n  mod_vcard_xupdate: {}\n  mod_version:\n    show_os: false"` |  |
+| configuration.ejabberd | string | `"hosts:\n  - {{ .Values.ejabberd.virtualHost }}\n\nloglevel: 4\nlog_rotate_size: 10485760\nlog_rotate_date: \"\"\nlog_rotate_count: 1\nlog_rate_limit: 100\n\n{{- if or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled }}\ncertfiles:\n  - \"/home/ejabberd/certs/server_certificate.pem\"\n  - \"/home/ejabberd/certs/server_key.pem\"\nca_file: \"/home/ejabberd/certs/ca_certificate.pem\"\n{{- end }}\n\nlisten:\n  - port: {{ .Values.service.c2s.port }}\n    ip: \"::\"\n    module: ejabberd_c2s\n    max_stanza_size: 262144\n    shaper: c2s_shaper\n    access: c2s\n    {{- if or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled }}\n    starttls_required: true\n    {{ else }}\n    starttls_required: false\n    {{ end }}\n\n  - port: {{ .Values.service.s2s.port }}\n    ip: \"::\"\n    module: ejabberd_s2s_in\n    max_stanza_size: 524288\n\n  - port: {{ .Values.service.https.port }}\n    ip: \"::\"\n    module: ejabberd_http\n    {{- if or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled }}\n    tls: true\n    {{- end }}\n    request_handlers:\n      \"/admin\": ejabberd_web_admin\n      {{- if or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled }}\n      \"/api\": mod_http_api\n      \"/bosh\": mod_bosh\n      \"/captcha\": ejabberd_captcha\n      \"/upload\": mod_http_upload\n      \"/ws\": ejabberd_http_ws\n      \"/oauth\": ejabberd_oauth\n      {{- end }}\n\n  - port: {{ .Values.service.http.port }}\n    ip: \"::\"\n    module: ejabberd_http\n    request_handlers:\n      \"/admin\": ejabberd_web_admin\n      {{- if not (or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled ) }}\n      \"/api\": mod_http_api\n      \"/bosh\": mod_bosh\n      \"/captcha\": ejabberd_captcha\n      \"/upload\": mod_http_upload\n      \"/ws\": ejabberd_http_ws\n      \"/oauth\": ejabberd_oauth\n      {{- end }}\n\n  - port: {{ .Values.service.mqtt.port }}\n    ip: \"::\"\n    module: mod_mqtt\n    backlog: 1000\n\n{{- if or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled }}\ns2s_use_starttls: optional\n{{ else }}\ns2s_use_starttls: false\n{{ end }}\n\nacl:\n  local:\n    user_regexp: \"\"\n  loopback:\n    ip:\n      - 127.0.0.0/8\n      - ::1/128\n      - ::FFFF:127.0.0.1/128\n  admin:\n    user:\n      - \"admin@{{ .Values.ejabberd.virtualHost }}\"\n\naccess_rules:\n  local:\n    allow: local\n  c2s:\n    deny: blocked\n    allow: all\n  announce:\n    allow: admin\n  configure:\n    allow: admin\n  muc_create:\n    allow: local\n  pubsub_createnode:\n    allow: local\n  trusted_network:\n    allow: loopback\n\napi_permissions:\n  \"console commands\":\n    from:\n      - ejabberd_ctl\n    who: all\n    what: \"*\"\n  \"admin access\":\n    who:\n      access:\n        allow:\n          acl: loopback\n          acl: admin\n      oauth:\n        scope: \"ejabberd:admin\"\n        access:\n          allow:\n            acl: loopback\n            acl: admin\n    what:\n      - \"*\"\n      - \"!stop\"\n      - \"!start\"\n  \"public commands\":\n    who:\n      ip: 127.0.0.1/8\n    what:\n      - status\n      - connected_users_number\n\nshaper:\n  normal: 1000\n  fast: 50000\n\nshaper_rules:\n  max_user_sessions: 10\n  max_user_offline_messages:\n    5000: admin\n    100: all\n  c2s_shaper:\n    none: admin\n    normal: all\n  s2s_shaper: fast\n\nmax_fsm_queue: 10000\n\nmodules:\n  mod_adhoc: {}\n  mod_admin_extra: {}\n  mod_announce:\n    access: announce\n  mod_avatar: {}\n  mod_blocking: {}\n  mod_bosh: {}\n  mod_caps: {}\n  mod_carboncopy: {}\n  mod_client_state: {}\n  mod_configure: {}\n  mod_disco: {}\n  mod_fail2ban: {}\n  mod_http_api: {}\n  mod_http_upload:\n    {{- if or (include \"ejabberd.createTlsSecret\" . ) .Values.auth.tls.enabled }}\n    put_url: https://@HOST@:5443/upload\n    {{- else }}\n    put_url: http://@HOST@:5280/upload\n    {{- end }}\n  mod_last: {}\n  mod_mam:\n    ## Mnesia is limited to 2GB, better to use an SQL backend\n    ## For small servers SQLite is a good fit and is very easy\n    ## to configure. Uncomment this when you have SQL configured:\n    ## db_type: sql\n    assume_mam_usage: true\n    default: never\n  mod_mqtt: {}\n  mod_muc:\n    access:\n      - allow\n    access_admin:\n      - allow: admin\n    access_create: muc_create\n    access_persistent: muc_create\n    access_mam:\n      - allow\n    default_room_options:\n      allow_subscription: true  # enable MucSub\n      mam: false\n  mod_muc_admin: {}\n  mod_offline:\n    access_max_user_messages: max_user_offline_messages\n  mod_ping: {}\n  mod_privacy: {}\n  mod_private: {}\n  mod_proxy65:\n    access: local\n    max_connections: 5\n  mod_pubsub:\n    access_createnode: pubsub_createnode\n    plugins:\n      - flat\n      - pep\n    force_node_config:\n      ## Avoid buggy clients to make their bookmarks public\n      storage:bookmarks:\n        access_model: whitelist\n  mod_push: {}\n  mod_push_keepalive: {}\n  mod_register:\n    ## Only accept registration requests from the \"trusted\"\n    ## network (see access_rules section above).\n    ## Think twice before enabling registration from any\n    ## address. See the Jabber SPAM Manifesto for details:\n    ## https://github.com/ge0rg/jabber-spam-fighting-manifesto\n    ip_access: trusted_network\n  mod_roster:\n    versioning: true\n  mod_sip: {}\n  mod_s2s_dialback: {}\n  mod_shared_roster: {}\n  mod_stream_mgmt:\n    resend_on_timeout: if_offline\n  mod_vcard: {}\n  mod_vcard_xupdate: {}\n  mod_version:\n    show_os: false\n\n{{- if .Values.extraConfiguration }}\ninclude_config_file:\n  {{- range $k, $v := .Values.extraConfiguration }}\n  \"/home/ejabberd/extra-config/{{ $k }}\": {}\n  {{- end }}\n{{- end }}"` |  |
 | configuration.ejabberdctl | string | `""` |  |
 | configuration.inetrc | string | `"{lookup,[\"file\",\"native\"]}.\n{host,{127,0,0,1}, [\"localhost\",\"@@HOSTNAME@@\"]}.\n{file, resolv, \"/etc/resolv.conf\"}."` |  |
 | containerSecurityContext | object | `{}` |  |
@@ -58,9 +56,8 @@ ejabberd Community Server - Helm Chart
 | diagnosticMode.command[0] | string | `"sleep"` |  |
 | diagnosticMode.enabled | bool | `false` |  |
 | ejabberd.virtualHost | string | `"jabber.example.local"` |  |
-| extraConfiguration | string | `""` |  |
+| extraConfiguration | object | `{}` |  |
 | extraContainerPorts | list | `[]` |  |
-| extraDeploy | list | `[]` |  |
 | extraEnvVars | list | `[]` |  |
 | extraEnvVarsCM | string | `""` |  |
 | extraEnvVarsSecret | string | `""` |  |
@@ -68,12 +65,10 @@ ejabberd Community Server - Helm Chart
 | extraSecretsPrependReleaseName | bool | `false` |  |
 | extraVolumeMounts | list | `[]` |  |
 | extraVolumes | list | `[]` |  |
-| fullnameOverride | string | `""` |  |
 | global.imagePullSecrets | list | `[]` |  |
 | global.imageRegistry | string | `""` |  |
 | global.storageClass | string | `""` |  |
 | hostAliases | list | `[]` |  |
-| image.debug | bool | `false` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.pullSecrets | list | `[]` |  |
 | image.registry | string | `"docker.io"` |  |
@@ -92,24 +87,16 @@ ejabberd Community Server - Helm Chart
 | ingress.selfSigned | bool | `false` |  |
 | ingress.tls | bool | `false` |  |
 | initContainers | list | `[]` |  |
-| kubeVersion | string | `""` |  |
 | livenessProbe.enabled | bool | `true` |  |
 | livenessProbe.failureThreshold | int | `6` |  |
 | livenessProbe.initialDelaySeconds | int | `120` |  |
 | livenessProbe.periodSeconds | int | `30` |  |
 | livenessProbe.successThreshold | int | `1` |  |
 | livenessProbe.timeoutSeconds | int | `20` |  |
-| nameOverride | string | `""` |  |
-| networkPolicy.additionalRules | list | `[]` |  |
-| networkPolicy.allowExternal | bool | `true` |  |
-| networkPolicy.enabled | bool | `false` |  |
 | nodeAffinityPreset.key | string | `""` |  |
 | nodeAffinityPreset.type | string | `""` |  |
 | nodeAffinityPreset.values | list | `[]` |  |
 | nodeSelector | object | `{}` |  |
-| pdb.create | bool | `false` |  |
-| pdb.maxUnavailable | string | `""` |  |
-| pdb.minAvailable | int | `1` |  |
 | persistence.database.accessMode | string | `"ReadWriteOnce"` |  |
 | persistence.database.annotations | object | `{}` |  |
 | persistence.database.enabled | bool | `false` |  |
@@ -134,7 +121,6 @@ ejabberd Community Server - Helm Chart
 | podSecurityContext.fsGroup | int | `9000` |  |
 | podSecurityContext.runAsUser | int | `9000` |  |
 | priorityClassName | string | `""` |  |
-| rbac.create | bool | `true` |  |
 | readinessProbe.enabled | bool | `true` |  |
 | readinessProbe.failureThreshold | int | `3` |  |
 | readinessProbe.initialDelaySeconds | int | `10` |  |
@@ -169,7 +155,7 @@ ejabberd Community Server - Helm Chart
 | service.s2s.port | int | `5269` |  |
 | service.s2s.portName | string | `"s2s"` |  |
 | service.type | string | `"ClusterIP"` |  |
-| serviceAccount.create | bool | `true` |  |
+| serviceAccount.create | bool | `false` |  |
 | serviceAccount.name | string | `""` |  |
 | sidecars | list | `[]` |  |
 | statefulsetLabels | object | `{}` |  |
