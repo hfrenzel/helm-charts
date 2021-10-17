@@ -72,9 +72,9 @@ spec:
       securityContext: {{- omit .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
-      {{- if or (.Values.initContainers) (and .Values.volumePermissions.enabled .Values.podSecurityContext (or .Values.persistence.database.enabled .Values.persistence.upload.enabled)) }}
+      {{- if or (.Values.initContainers) (and .Values.volumePermissions.enabled .Values.podSecurityContext .Values.persistence.enabled) }}
       initContainers:
-        {{- if and .Values.volumePermissions.enabled .Values.podSecurityContext (or .Values.persistence.database.enabled .Values.persistence.upload.enabled) }}
+        {{- if and .Values.volumePermissions.enabled .Values.podSecurityContext .Values.persistence.enabled }}
         - name: volume-permissions
           image: {{ include "ejabberd.volumePermissions.image" . }}
           imagePullPolicy: {{ .Values.volumePermissions.image.pullPolicy | quote }}
@@ -83,12 +83,8 @@ spec:
           args:
             - -ec
             - |
-              {{- if .Values.persistence.database.enabled }}
-              mkdir -p "/home/ejabberd/database"
+              {{- if .Values.persistence.enabled }}
               chown -R "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" /home/ejabberd/database
-              {{- end }}
-              {{- if .Values.persistence.upload.enabled }}
-              mkdir -p "/home/ejabberd/upload"
               chown -R "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.fsGroup }}" /home/ejabberd/upload
               {{- end }}
           securityContext:
@@ -98,12 +94,10 @@ spec:
           resources: {{- toYaml .Values.volumePermissions.resources | nindent 12 }}
           {{- end }}
           volumeMounts:
-            {{- if .Values.persistence.database.enabled }}
-            - name: database
+            {{- if .Values.persistence.enabled }}
+            - name: {{ template "ejabberd.fullname" . }}-data
               mountPath: "/home/ejabberd/database"
-            {{- end }}
-            {{- if .Values.persistence.upload.enabled }}
-            - name: upload
+            - name: {{ template "ejabberd.fullname" . }}-data
               mountPath: "/home/ejabberd/upload"
             {{- end }}
         {{- end }}
@@ -241,18 +235,20 @@ spec:
           resources: {{- toYaml .Values.resources | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: conf
+            - name: {{ template "ejabberd.fullname" . }}-conf
               mountPath: "/home/ejabberd/conf"
             {{- if .Values.auth.tls.enabled }}
-            - name: certs
+            - name: {{ template "ejabberd.fullname" . }}-certs
               mountPath: "/home/ejabberd/certs"
             {{- end }}
-            - name: database
+            - name: {{ template "ejabberd.fullname" . }}-data
               mountPath: "/home/ejabberd/database"
-            - name: upload
+              subPath: "database"
+            - name: {{ template "ejabberd.fullname" . }}-data
               mountPath: "/home/ejabberd/upload"
+              subPath: "upload"
             {{- if .Values.extraConfiguration }}
-            - name: extra-config
+            - name: {{ template "ejabberd.fullname" . }}-extra-config
               mountPath: "/home/ejabberd/extra-config"
             {{- end }}
             {{- if .Values.extraVolumeMounts }}
@@ -262,10 +258,10 @@ spec:
         {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
         {{- end }}
       volumes:
-        {{- if .Values.persistence.volumes }}
-        {{- toYaml .Values.persistence.volumes | nindent 8 }}
+        {{- if .Values.persistence.extraVolumes }}
+        {{- toYaml .Values.persistence.extraVolumes | nindent 8 }}
         {{- end }}
-        - name: conf
+        - name: {{ template "ejabberd.fullname" . }}-conf
           configMap:
             name: {{ template "ejabberd.fullname" . }}-config
             items:
@@ -276,7 +272,7 @@ spec:
               - key: inetrc
                 path: inetrc
         {{- if .Values.auth.tls.enabled }}
-        - name: certs
+        - name: {{ template "ejabberd.fullname" . }}-certs
           secret:
             secretName: {{ template "ejabberd.tlsSecretName" . }}
             items:
@@ -287,72 +283,39 @@ spec:
               - key: tls.key
                 path: server_key.pem
         {{- end }}
-        {{- if not (contains "database" (quote .Values.persistence.volumes)) }}
-        {{- if not .Values.persistence.database.enabled }}
-        - name: database
+        {{- if not .Values.persistence.enabled }}
+        - name: {{ template "ejabberd.fullname" . }}-data
           emptyDir: {}
-        {{- else if .Values.persistence.database.existingClaim }}
-        - name: database
+        {{- else if .Values.persistence.existingClaim }}
+        - name: {{ template "ejabberd.fullname" . }}-data
           persistentVolumeClaim:
-            claimName: {{ .Values.persistence.database.existingClaim }}
-        {{- end }}
-        {{- end }}
-        {{- if not (contains "upload" (quote .Values.persistence.volumes)) }}
-        {{- if not .Values.persistence.upload.enabled }}
-        - name: upload
-          emptyDir: {}
-        {{- else if .Values.persistence.upload.existingClaim }}
-        - name: upload
-          persistentVolumeClaim:
-            claimName: {{ .Values.persistence.upload.existingClaim }}
-        {{- end }}
+            claimName: {{ .Values.persistence.existingClaim }}
         {{- end }}
         {{- if .Values.extraConfiguration }}
-        - name: extra-config
+        - name: {{ template "ejabberd.fullname" . }}-extra-config
           secret:
             secretName: {{ template "ejabberd.fullname" . }}-extra-config
         {{- end }}
         {{- if .Values.extraVolumes }}
         {{ toYaml .Values.extraVolumes | nindent 8 }}
         {{- end }}
-  {{- if or (and .Values.persistence.database.enabled (not .Values.persistence.database.existingClaim)) (and .Values.persistence.upload.enabled (not .Values.persistence.upload.existingClaim)) }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:
-    {{- if and .Values.persistence.database.enabled (not .Values.persistence.database.existingClaim) }}
     - metadata:
-        name: database
+        name: {{ template "ejabberd.fullname" . }}-data
         labels: {{- include "common.labels.matchLabels" . | nindent 10 }}
-        {{- if .Values.persistence.database.annotations }}
+        {{- if .Values.persistence.annotations }}
         annotations:
-          {{- include "common.tplvalues.render" ( dict "value" .Values.persistence.database.annotations "context" $) | nindent 10 }}
+          {{- include "common.tplvalues.render" ( dict "value" .Values.persistence.annotations "context" $) | nindent 10 }}
         {{- end }}
       spec:
         accessModes:
-          - {{ .Values.persistence.database.accessMode | quote }}
+          - {{ .Values.persistence.accessMode | quote }}
         resources:
           requests:
-            storage: {{ .Values.persistence.database.size | quote }}
-        {{ include "common.storage.class" (dict "persistence" .Values.persistence.database "global" .Values.global) }}
-        {{- if .Values.persistence.database.selector }}
-        selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.database.selector "context" $) | nindent 10 }}
+            storage: {{ .Values.persistence.size | quote }}
+        {{ include "common.storage.class" (dict "persistence" .Values.persistence "global" .Values.global) }}
+        {{- if .Values.persistence.selector }}
+        selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.selector "context" $) | nindent 10 }}
         {{- end -}}
-    {{- end }}
-    {{- if and .Values.persistence.upload.enabled (not .Values.persistence.upload.existingClaim) }}
-    - metadata:
-        name: upload
-        labels: {{- include "common.labels.matchLabels" . | nindent 10 }}
-        {{- if .Values.persistence.upload.annotations }}
-        annotations:
-          {{- include "common.tplvalues.render" ( dict "value" .Values.persistence.database.annotations "context" $) | nindent 10 }}
-        {{- end }}
-      spec:
-        accessModes:
-          - {{ .Values.persistence.upload.accessMode | quote }}
-        resources:
-          requests:
-            storage: {{ .Values.persistence.upload.size | quote }}
-        {{ include "common.storage.class" (dict "persistence" .Values.persistence.upload "global" .Values.global) }}
-        {{- if .Values.persistence.upload.selector }}
-        selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.database.selector "context" $) | nindent 10 }}
-        {{- end }}
-    {{- end }}
   {{- end }}

@@ -724,95 +724,52 @@ serviceAccount:
 ## @section Persistence parameters
 
 persistence:
-  database:
-    ## @param persistence.database.enabled Enable eJabberd database persistence using PVC
-    ##
-    enabled: false
+  ## @param persistence.database.enabled Enable eJabberd database persistence using PVC
+  ##
+  enabled: false
 
-    ## @param persistence.database.storageClass PVC Storage Class for eJabberd database volume
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    ##
-    storageClass: ""
+  ## @param persistence.database.storageClass PVC Storage Class for eJabberd database volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: ""
 
-    ## @param persistence.database.selector Selector to match an existing Persistent Volume
-    ## selector:
-    ##   matchLabels:
-    ##     app: my-app
-    ##
-    selector: {}
+  ## @param persistence.database.selector Selector to match an existing Persistent Volume
+  ## selector:
+  ##   matchLabels:
+  ##     app: my-app
+  ##
+  selector: {}
 
-    ## @param persistence.database.accessMode PVC Access Mode for eJabberd database volume
-    ##
-    accessMode: ReadWriteOnce
+  ## @param persistence.database.accessMode PVC Access Mode for eJabberd database volume
+  ##
+  accessMode: ReadWriteOnce
 
-    ## @param persistence.database.existingClaim Provide an existing PersistentVolumeClaims
-    ## The value is evaluated as a template
-    ## So, for example, the name can depend on .Release or .Chart
-    ##
-    existingClaim: ""
+  ## @param persistence.database.existingClaim Provide an existing PersistentVolumeClaims
+  ## The value is evaluated as a template
+  ## So, for example, the name can depend on .Release or .Chart
+  ##
+  existingClaim: ""
 
-    ## @param persistence.database.size PVC Storage Request for eJabberd database volume
-    ##
-    size: 1Gi
+  ## @param persistence.database.size PVC Storage Request for eJabberd database volume
+  ##
+  size: 1Gi
 
-    ## @param persistence.database.annotations Persistence annotations. Evaluated as a template
-    ## Example:
-    ## annotations:
-    ##   example.io/disk-volume-type: SSD
-    ##
-    annotations: {}
+  ## @param persistence.database.annotations Persistence annotations. Evaluated as a template
+  ## Example:
+  ## annotations:
+  ##   example.io/disk-volume-type: SSD
+  ##
+  annotations: {}
 
-  upload:
-    ## @param persistence.upload.enabled Enable eJabberd upload persistence using PVC
-    ##
-    enabled: false
-
-    ## @param persistence.upload.storageClass PVC Storage Class for eJabberd upload volume
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    ##
-    storageClass: ""
-
-    ## @param persistence.upload.selector Selector to match an existing Persistent Volume
-    ## selector:
-    ##   matchLabels:
-    ##     app: my-app
-    ##
-    selector: {}
-
-    ## @param persistence.upload.accessMode PVC Access Mode for eJabberd upload volume
-    ##
-    accessMode: ReadWriteOnce
-
-    ## @param persistence.upload.existingClaim Provide an existing PersistentVolumeClaims
-    ## The value is evaluated as a template
-    ## So, for example, the name can depend on .Release or .Chart
-    ##
-    existingClaim: ""
-
-    ## @param persistence.upload.size PVC Storage Request for eJabberd upload volume
-    ##
-    size: 10Gi
-
-    ## @param persistence.upload.annotations Persistence annotations. Evaluated as a template
-    ## Example:
-    ## annotations:
-    ##   example.io/disk-volume-type: SSD
-    ##
-    annotations: {}
-
-  ## @param persistence.volumes Additional volumes without creating PVC
+  ## @param persistence.extraVolumes Additional volumes without creating PVC
   ##  - name: volume_name
   ##    emptyDir: {}
   ##
-  volumes: []
+  extraVolumes: []
 
 ## @section Exposure parameters
 
