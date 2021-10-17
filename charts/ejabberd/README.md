@@ -1,22 +1,17 @@
 # ejabberd
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 21.07](https://img.shields.io/badge/AppVersion-21.07-informational?style=flat-square)
-
 ejabberd Community Server - Helm Chart
 
-**Homepage:** <https://github.com/hfrenzel/helm-charts/charts/ejabberd>
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 21.07](https://img.shields.io/badge/AppVersion-21.07-informational?style=flat-square)
 
-## Maintainers
+## Installing the Chart
 
-| Name | Email | Url |
-| ---- | ------ | --- |
-| Hendrik Frenzel | hfrenzel@scunc.net |  |
+To install the chart with the release name `my-ejabberd`:
 
-## Source Code
-
-* <https://ejabberd.im>
-* <https://github.com/processone/ejabberd>
-* <https://github.com/processone/docker-ejabberd>
+```console
+$ helm repo add hfrenzel https://hfrenzel.github.io/helm-charts
+$ helm install my-ejabberd hfrenzel/ejabberd
+```
 
 ## Requirements
 
