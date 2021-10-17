@@ -1,0 +1,19 @@
+{{ template "chart.header" . }}
+{{ template "chart.description" . }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Installing the Chart
+
+To install the chart with the release name `my-ejabberd`:
+
+```console
+$ helm repo add hfrenzel https://hfrenzel.github.io/helm-charts
+$ helm install my-ejabberd hfrenzel/{{ template "chart.name" . }}
+```
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}
